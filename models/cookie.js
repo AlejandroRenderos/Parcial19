@@ -12,5 +12,3 @@ var CookieSchema = new Schema({
 });
 
   module.exports = mongoose.model("Cookie", CookieSchema);
-  
-  

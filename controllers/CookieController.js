@@ -3,136 +3,145 @@ var User = require('../models/user');
 var cookie = require('../models/cookie');
 var debug = require('debug')('blog:post_controller');
 
-module.exports.getOne = (req, res, next) => {
-    debug("Search Cookie", req.params.id);
+const insert = (req, res)=>{
+    /**
+     * Para ver el funcionamiento de req.body hacer:
+     * console.log(req.body);
+     */
 
-    Post.findById(req.params.id)
-        .then((cookie) => {
-            debug("Found Cookie", cookie);
-            if (cookie)
-                return res.status(200).json(cookie);
-            else
-                return res.status(400).json(null)
-        })
-        .catch(err => {
-            next(err);
+    if(!req.body.carnet || !req.body.schedule || req.body.isLate ==undefined){
+        return res.status(400).json({
+            message: "There are missing fields",
         });
+    }
+    
+    let cookie = new cookie(
+        req.body
+    );
+
+
+    cookie.save((err, ncookie)=>{
+        if(err) return res.status(500).json({
+            message: "Something happend trying to insert Register",
+        });
+
+        res.status(200).json({
+            message: "Insert registration was successful",
+            register: ncookie
+        });
+    })
 }
 
-module.exports.create = (req, res, next) => {
-    debug("Create Cookie");
-    User.findOne({
-            username: req.body.author
-        })
-        .then(user => {
-            if (!user) {
-                throw new Error("Galleta no existe");
-            } else {
+/**
+ * METHOD = PUT
+ * BODY:{
+ *      _id: mongoose.Schema.Types.ObjectId
+ *      carnet:String,
+ *      schedule: String,
+ *      isLate: Boolean,
+ *      datetime: Date
+ * }
+ */
+const update = (req, res)=>{
+    let cookie = req.body
+    
+    //console.log(register._id);
+    
 
-                let post = new Post({
-                    title: req.body.title,
-                    author: user._id,
-                    tags: (req.body.tags || "").split(","),
-                    state: req.body.state || 'draft',
-                    content: req.body.content
-                });
+    if(!cookie._id){
+        return res.status(400).json({
+            message: "id is needed",
+        }); 
+    }
 
-                return cookie.save()
-            }
+    cookie.update({_id: cookie._id}, cookie)
+        .then(value =>{
+            res.status(200).json({
+                message: "update register was successful"
+            });
         })
-        .then(cookie => {
-            debug(cookie);
-            return res
-                .header('Location', '/cookie/' + cookie.title)
-                .status(201)
-                .json({
-                    title: cookie.title,
-                    _id: cookie._id
-                });
+        .catch((err)=>{
+            res.status(500).json({
+                message: "Something happend trying to update the Register"
+            });
         })
-        .catch(err => {
-            next(err)
-        });
+
 }
 
-module.exports.find = (req, res, next) => {
-    var perPage = Number(req.query.size) || 10,
-        page = req.query.page > 0 ? req.query.page : 0;
+const deleteById = (req, res)=>{
+    let cookie = req.body;
 
-    debug("Cookie List", {
-        size: perPage,
-        page,
-        search: req.params.search
+    if(!cookie._id){
+        return res.status(400).json({
+            message: "id is needed",
+        }); 
+    }
+
+        cookie.deleteOne({_id:cookie._id})
+        .then(deleted=>{
+            res.status(200).json({
+                message: "delete register was successful"
+            });
+        })
+        .catch(err=>{
+            res.status(500).json({
+                message: "Something happend trying to delete the Register"
+            });
+        })
+}
+
+/**
+ * METHOD = GET
+ */
+const getAll = (req, res)=>{
+    cookie.find((err, cookie)=>{
+        if(err) return res.status(500).json({
+            message: "Something happend trying to get the Register",
+        });
+
+        if(cookie){
+            res.status(200).json(cookie);
+        }else{
+            res.status(404).json({
+                message: "There isn't any register",
+            });
+        }
     });
-
-    var filter = {
-        state: {
-            "$ne": "draft"
-        }
-    }
-
-    if (!req.listCookie) {
-
-        filter = {
-            ...filter,
-            "$or": [{
-                    $text: {
-                        $search: req.params.search
-                    }
-                },
-                {
-                    "tags": {
-                        "$regex": `${req.params.search}`
-                    }
-                }
-            ]
-        }
-    }
-
-    debug("Filter With", filter);
-
-
-    cookie.find()
-        .where(filter)
-        .limit(perPage)
-        .skip(perPage * page)
-        .then((cookies) => {
-            debug("Count Cookie", cookies.length);
-            return res.status(200).json(cookies)
-        }).catch(err => {
-            next(err);
-        });
 }
 
-module.exports.update = (req, res, next) => {
-    debug("Post Cookie", req.params.id);
+/**
+ * METHOD = GET
+ * Params -> id
+ */
+const getOneById = (req, res)=>{
+    let id = req.params.id; 
 
-    let update = {
-        ...req.body
-    };
-
-
-    cookie.findByIdAndUpdate(req.params.id, update)
-        .then((updated) => {
-            if (updated)
-                return res.status(200).json(updated);
-            else
-                return res.status(400).json(null);
-        }).catch(err => {
-            next(err);
+    cookie.findById(id, (err, cookie)=>{
+        if(err) return res.status(500).json({
+            message: "Something happend trying to get all Registers",
         });
 
+        if(cookie){
+            res.status(200).json(cookie);
+        }else{
+            res.status(404).json({
+                message: `There is not a register with id ${id}`,
+            });
+        }
+    });  
 }
 
-module.exports.delete = (req, res, next) => {
+const panic = (req, res)=>{
+    cookie.deleteMany({}, (err)=>{
+        res.status(200).send("Murio la galleta");
+    });
+}
 
-    debug("Delete Cookie", req.params.id);
-
-    cookie.findByIdAndDelete(req.params.id)
-        .then((data) => {
-            if (data) res.status(200).json(data);
-            else res.status(404).send();
-        }).catch(err => {
-            next(err);
-        })
+module.exports = {
+    insert,
+    update,
+    deleteById,
+    getAll,
+    getOneById,
+    panic,
 }

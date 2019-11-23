@@ -1,22 +1,12 @@
-body(class =registro )
-h1 Cookies 
-h2 login 
 
-div(class= 'conteiner' )
+extends layout
 
-label(for="Nombre Galleta")
-input( type="text")
-br
-label(for="Marca")
-input(type="text")
-br
-label(for="Sabor")
-input(type="text")
-br
-label(for="Precio")
-input(type="number", name="")
-br 
-label(for="Tipo")
-input(type="text", name="")
-br 
-input(type="submit", value="")
+block content
+    if err.bad 
+        div.error=err.msg
+    form(method="post")
+        label(for="user") User
+        input#user(type="text", placeholder="User", name="user", required)
+        label(for="password") Password
+        input#user(type="text", placeholder="password", name="password", required)
+        input(type="submit", value="Log In")
